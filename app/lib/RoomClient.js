@@ -840,7 +840,7 @@ export default class RoomClient
 				producer = this._room.createProducer(track, null, { source: 'mic' });
 
 				// No need to keep original track.
-				track.stop();
+				//track.stop();
 
 				// Send it.
 				return producer.send(this._sendTransport);

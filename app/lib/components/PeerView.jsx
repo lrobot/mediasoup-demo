@@ -209,6 +209,7 @@ export default class PeerView extends React.Component
 						loading : videoProfile === 'none'
 					})}
 					autoPlay
+					playsinline='true'
 					muted={isMe}
 				/>
 
