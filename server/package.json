@@ -18,7 +18,7 @@
     "express": "^4.16.4",
     "mediasoup": "github:versatica/mediasoup#master",
     "pidusage": "^2.0.17",
-    "protoo-server": "^4.0.2"
+    "protoo-server": "file:../protoo/server"
   },
   "devDependencies": {
     "gulp": "^4.0.0",

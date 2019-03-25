@@ -45,6 +45,7 @@ let expressApp;
 
 // Protoo WebSocket server.
 // @type {protoo.WebSocketServer}
+let protooTcpSocketServer;
 let protooWebSocketServer;
 
 // mediasoup Workers.
@@ -77,6 +78,7 @@ async function run()
 
 	// Run a protoo WebSocketServer.
 	await runProtooWebSocketServer();
+	await runProtooTcpSocketServer();
 
 	// Log rooms status every 30 seconds.
 	setInterval(() =>
@@ -374,6 +376,57 @@ async function runHttpsServer()
 	});
 }
 
+async function runProtooTcpSocketServer()
+{
+	logger.info('running protoo TcpSocketServer...');
+
+	// Create the protoo WebSocket server.
+	protooTcpSocketServer = new protoo.TcpSocketServer(null, {});
+
+	// Handle connections from clients.
+	protooTcpSocketServer.on('connectionrequest', (info, accept, reject) =>
+	{
+		// Accept the protoo TcpSocket connection.
+		const protooTcpSocketTransport = accept();
+		protooTcpSocketTransport.on('id_init',(messsage) => {
+
+			// The client indicates the roomId and peerId in the URL query.
+			const roomId = message['roomId'];
+			const peerId = message['peerId'];
+			const forceH264 = message['forceH264'] === 'true';
+
+			if (!roomId || !peerId)
+			{
+				reject(400, 'Connection request without roomId and/or peerId');
+
+				return;
+			}
+
+			logger.info(
+				'protoo connection request [roomId:%s, peerId:%s, address:%s, origin:%s]',
+				roomId, peerId, info.socket.remoteAddress, info.origin);
+
+			// Serialize this code into the queue to avoid that two peers connecting at
+			// the same time with the same roomId create two separate rooms with same
+			// roomId.
+			queue.push(async () =>
+			{
+				const room = await getOrCreateRoom({ roomId, forceH264 });
+
+
+				room.handleProtooConnection({ peerId, protooTcpSocketTransport });
+				protooTcpSocketTransport.can_process_message = true;
+			})
+			.catch((error) =>
+			{
+				logger.error('room creation or room joining failed:%o', error);
+
+				reject(error);
+			});
+        });
+
+	});
+}
 /**
  * Create a protoo WebSocketServer to allow WebSocket connections from browsers.
  */
