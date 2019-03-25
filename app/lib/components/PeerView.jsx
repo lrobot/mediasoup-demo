@@ -1,16 +1,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import ReactTooltip from 'react-tooltip';
 import classnames from 'classnames';
 import Spinner from 'react-spinner';
-import clipboardCopy from 'clipboard-copy';
 import hark from 'hark';
 import * as faceapi from 'face-api.js';
-import Logger from '../Logger';
 import * as appPropTypes from './appPropTypes';
 import EditableInput from './EditableInput';
-
-const logger = new Logger('PeerView');
 
 const tinyFaceDetectorOptions = new faceapi.TinyFaceDetectorOptions(
 	{
@@ -27,12 +22,8 @@ export default class PeerView extends React.Component
 		this.state =
 		{
 			audioVolume           : 0, // Integer from 0 to 10.,
-			showInfo              : window.SHOW_INFO || false,
 			videoResolutionWidth  : null,
-			videoResolutionHeight : null,
-			videoCanPlay          : false,
-			videoElemPaused       : false,
-			maxSpatialLayer       : null
+			videoResolutionHeight : null
 		};
 
 		// Latest received video track.
@@ -59,298 +50,118 @@ export default class PeerView extends React.Component
 		const {
 			isMe,
 			peer,
-			audioProducerId,
-			videoProducerId,
-			audioConsumerId,
-			videoConsumerId,
-			videoRtpParameters,
-			audioMuted,
 			videoVisible,
-			videoMultiLayer,
-			videoCurrentSpatialLayer,
-			videoPreferredSpatialLayer,
+			videoProfile,
+			videoPreferredProfile,
 			audioCodec,
 			videoCodec,
-			audioScore,
-			videoScore,
 			onChangeDisplayName,
-			onChangeMaxSendingSpatialLayer,
-			onChangeVideoPreferredSpatialLayer,
-			onRequestKeyFrame,
-			onStatsClick
+			onChangeVideoPreferredProfile,
+			onRequestKeyFrame
 		} = this.props;
 
 		const {
 			audioVolume,
-			showInfo,
 			videoResolutionWidth,
-			videoResolutionHeight,
-			videoCanPlay,
-			videoElemPaused,
-			maxSpatialLayer
+			videoResolutionHeight
 		} = this.state;
 
 		return (
 			<div data-component='PeerView'>
 				<div className='info'>
-					<div className='icons'>
+					<div className={classnames('media', { 'is-me': isMe })}>
 						<div
-							className={classnames('icon', 'info', { on: showInfo })}
-							onClick={() => this.setState({ showInfo: !showInfo })}
-						/>
+							className={classnames('box', {
+								clickable : !isMe && videoVisible && videoProfile !== 'default'
+							})}
+							onClick={(event) =>
+							{
+								event.stopPropagation();
 
-						<div
-							className={classnames('icon', 'stats')}
-							onClick={() => onStatsClick(peer.id)}
-						/>
-					</div>
+								let newPreferredProfile;
 
-					<div className={classnames('box', { visible: showInfo })}>
-						<If condition={audioProducerId || audioConsumerId}>
-							<h1>audio</h1>
+								switch (videoPreferredProfile)
+								{
+									case 'low':
+										newPreferredProfile = 'medium';
+										break;
 
-							<If condition={audioProducerId}>
-								<p>
-									{'id: '}
-									<span
-										className='copiable'
-										data-tip='Copy audio producer id to clipboard'
-										onClick={() => clipboardCopy(`"${audioProducerId}"`)}
-									>
-										{audioProducerId}
-									</span>
-								</p>
+									case 'medium':
+										newPreferredProfile = 'high';
+										break;
 
-								<ReactTooltip
-									type='light'
-									effect='solid'
-									delayShow={1500}
-									delayHide={50}
-								/>
-							</If>
+									case 'high':
+										newPreferredProfile = 'low';
+										break;
 
-							<If condition={audioConsumerId}>
-								<p>
-									{'id: '}
-									<span
-										className='copiable'
-										data-tip='Copy video producer id to clipboard'
-										onClick={() => clipboardCopy(`"${audioConsumerId}"`)}
-									>
-										{audioConsumerId}
-									</span>
-								</p>
+									default:
+										newPreferredProfile = 'high';
+										break;
+								}
 
-								<ReactTooltip
-									type='light'
-									effect='solid'
-									delayShow={1500}
-									delayHide={50}
-								/>
-							</If>
+								onChangeVideoPreferredProfile(newPreferredProfile);
+							}}
+							onContextMenu={(event) =>
+							{
+								event.stopPropagation();
+								event.preventDefault(); // Don't show the context menu.
 
+								let newPreferredProfile;
+
+								switch (videoPreferredProfile)
+								{
+									case 'low':
+										newPreferredProfile = 'high';
+										break;
+
+									case 'medium':
+										newPreferredProfile = 'low';
+										break;
+
+									case 'high':
+										newPreferredProfile = 'medium';
+										break;
+
+									default:
+										newPreferredProfile = 'medium';
+										break;
+								}
+
+								onChangeVideoPreferredProfile(newPreferredProfile);
+							}}
+						>
 							<If condition={audioCodec}>
-								<p>codec: {audioCodec}</p>
-							</If>
-
-							<If condition={audioProducerId && audioScore}>
-								{this._printProducerScore(audioProducerId, audioScore)}
-							</If>
-
-							<If condition={audioConsumerId && audioScore}>
-								{this._printConsumerScore(audioConsumerId, audioScore)}
-							</If>
-						</If>
-
-						<If condition={videoProducerId || videoConsumerId}>
-							<h1>video</h1>
-
-							<If condition={videoProducerId}>
-								<p>
-									{'id: '}
-									<span
-										className='copiable'
-										data-tip='Copy audio consumer id to clipboard'
-										onClick={() => clipboardCopy(`"${videoProducerId}"`)}
-									>
-										{videoProducerId}
-									</span>
-								</p>
-
-								<ReactTooltip
-									type='light'
-									effect='solid'
-									delayShow={1500}
-									delayHide={50}
-								/>
-							</If>
-
-							<If condition={videoConsumerId}>
-								<p>
-									{'id: '}
-									<span
-										className='copiable'
-										data-tip='Copy video consumer id to clipboard'
-										onClick={() => clipboardCopy(`"${videoConsumerId}"`)}
-									>
-										{videoConsumerId}
-									</span>
-								</p>
-
-								<ReactTooltip
-									type='light'
-									effect='solid'
-									delayShow={1500}
-									delayHide={50}
-								/>
+								<p>{audioCodec}</p>
 							</If>
 
 							<If condition={videoCodec}>
-								<p>codec: {videoCodec}</p>
+								<p>
+									{videoCodec} {videoProfile}
+									{videoPreferredProfile ? ` (pref: ${videoPreferredProfile})` : ''}
+								</p>
 							</If>
 
 							<If condition={videoVisible && videoResolutionWidth !== null}>
-								<p>resolution: {videoResolutionWidth}x{videoResolutionHeight}</p>
-							</If>
-
-							<If
-								condition={
-									videoVisible &&
-									videoProducerId &&
-									videoRtpParameters.encodings.length > 1
-								}
-							>
-								<p>
-									max spatial layer: {maxSpatialLayer > -1 ? maxSpatialLayer : 'none'}
-									<span>{' '}</span>
-									<span
-										className={classnames({
-											clickable : maxSpatialLayer > -1
-										})}
-										onClick={(event) =>
-										{
-											event.stopPropagation();
-
-											const newMaxSpatialLayer = maxSpatialLayer -1;
-
-											onChangeMaxSendingSpatialLayer(newMaxSpatialLayer);
-											this.setState({ maxSpatialLayer: newMaxSpatialLayer });
-										}}
-									>
-										{'[ down ]'}
-									</span>
-									<span>{' '}</span>
-									<span
-										className={classnames({
-											clickable : maxSpatialLayer < videoRtpParameters.encodings.length - 1
-										})}
-										onClick={(event) =>
-										{
-											event.stopPropagation();
-
-											const newMaxSpatialLayer = maxSpatialLayer + 1;
-
-											onChangeMaxSendingSpatialLayer(newMaxSpatialLayer);
-											this.setState({ maxSpatialLayer: newMaxSpatialLayer });
-										}}
-									>
-										{'[ up ]'}
-									</span>
-								</p>
-							</If>
-
-							<If condition={!isMe && videoMultiLayer}>
-								<p>current spatial layer: {videoCurrentSpatialLayer}</p>
-								<p>
-									preferred spatial layer: {videoPreferredSpatialLayer}
-									<span>{' '}</span>
-									<span
-										className='clickable'
-										onClick={(event) =>
-										{
-											event.stopPropagation();
-
-											let newPreferredSpatialLayer;
-
-											switch (videoPreferredSpatialLayer)
-											{
-												case 0:
-													newPreferredSpatialLayer = 2;
-													break;
-
-												case 1:
-													newPreferredSpatialLayer = 0;
-													break;
-
-												case 2:
-													newPreferredSpatialLayer = 1;
-													break;
-											}
-
-											onChangeVideoPreferredSpatialLayer(newPreferredSpatialLayer);
-										}}
-									>
-										{'[ down ]'}
-									</span>
-									<span>{' '}</span>
-									<span
-										className='clickable'
-										onClick={(event) =>
-										{
-											event.stopPropagation();
-
-											let newPreferredSpatialLayer;
-
-											switch (videoPreferredSpatialLayer)
-											{
-												case 0:
-													newPreferredSpatialLayer = 1;
-													break;
-
-												case 1:
-													newPreferredSpatialLayer = 2;
-													break;
-
-												case 2:
-													newPreferredSpatialLayer = 0;
-													break;
-											}
-
-											onChangeVideoPreferredSpatialLayer(newPreferredSpatialLayer);
-										}}
-									>
-										{'[ up ]'}
-									</span>
-								</p>
+								<p>{videoResolutionWidth}x{videoResolutionHeight}</p>
 							</If>
 
 							<If condition={!isMe && videoCodec}>
-								<p>
-									<span
-										className='clickable'
-										onClick={(event) =>
-										{
-											event.stopPropagation();
+								<p
+									className='clickable'
+									onClick={(event) =>
+									{
+										event.stopPropagation();
 
-											if (!onRequestKeyFrame)
-												return;
+										if (!onRequestKeyFrame)
+											return;
 
-											onRequestKeyFrame();
-										}}
-									>
-										{'[ request keyframe ]'}
-									</span>
+										onRequestKeyFrame();
+									}}
+								>
+									{'Request keyframe'}
 								</p>
 							</If>
-
-							<If condition={videoProducerId && videoScore}>
-								{this._printProducerScore(videoProducerId, videoScore)}
-							</If>
-
-							<If condition={videoConsumerId && videoScore}>
-								{this._printConsumerScore(videoConsumerId, videoScore)}
-							</If>
-						</If>
+						</div>
 					</div>
 
 					<div className={classnames('peer', { 'is-me': isMe })}>
@@ -365,8 +176,8 @@ export default class PeerView extends React.Component
 									shouldBlockWhileLoading
 									editProps={{
 										maxLength   : 20,
-										autoCorrect : 'false',
-										spellCheck  : 'false'
+										autoCorrect : false,
+										spellCheck  : false
 									}}
 									onChange={({ displayName }) => onChangeDisplayName(displayName)}
 								/>
@@ -384,28 +195,22 @@ export default class PeerView extends React.Component
 								className={classnames('device-icon', peer.device.flag)}
 							/>
 							<span className='device-version'>
-								{peer.device.name} {peer.device.version || null}
+								{peer.device.name} {Math.floor(peer.device.version) || null}
 							</span>
 						</div>
 					</div>
 				</div>
 
 				<video
-					ref='videoElem'
+					ref='video'
 					className={classnames({
+						hidden  : !videoVisible,
 						'is-me' : isMe,
-						hidden  : !videoVisible || !videoCanPlay
+						loading : videoProfile === 'none'
 					})}
 					autoPlay
-					muted
-					controls={false}
-				/>
-
-				<audio
-					ref='audioElem'
-					autoPlay
-					muted={isMe || audioMuted}
-					controls={false}
+					playsinline='true'
+					muted={isMe}
 				/>
 
 				<canvas
@@ -417,14 +222,10 @@ export default class PeerView extends React.Component
 					<div className={classnames('bar', `level${audioVolume}`)} />
 				</div>
 
-				<If condition={videoVisible && videoScore < 5}>
+				<If condition={videoProfile === 'none'}>
 					<div className='spinner-container'>
 						<Spinner />
 					</div>
-				</If>
-
-				<If condition={videoElemPaused}>
-					<div className='video-elem-paused' />
 				</If>
 			</div>
 		);
@@ -444,47 +245,17 @@ export default class PeerView extends React.Component
 
 		clearInterval(this._videoResolutionPeriodicTimer);
 		cancelAnimationFrame(this._faceDetectionRequestAnimationFrame);
-
-		const { videoElem } = this.refs;
-
-		if (videoElem)
-		{
-			videoElem.oncanplay = null;
-			videoElem.onplay = null;
-			videoElem.onpause = null;
-		}
 	}
 
 	componentWillReceiveProps(nextProps)
 	{
-		const {
-			isMe,
-			audioTrack,
-			videoTrack,
-			videoRtpParameters
-		} = nextProps;
-
-		const { maxSpatialLayer } = this.state;
-
-		if (isMe && videoRtpParameters && maxSpatialLayer === null)
-		{
-			this.setState(
-				{
-					maxSpatialLayer : videoRtpParameters.encodings.length - 1
-				});
-		}
-		else if (isMe && !videoRtpParameters && maxSpatialLayer !== null)
-		{
-			this.setState({ maxSpatialLayer: null });
-		}
+		const { audioTrack, videoTrack } = nextProps;
 
 		this._setTracks(audioTrack, videoTrack);
 	}
 
 	_setTracks(audioTrack, videoTrack)
 	{
-		const { faceDetection } = this.props;
-
 		if (this._audioTrack === audioTrack && this._videoTrack === videoTrack)
 			return;
 
@@ -495,59 +266,34 @@ export default class PeerView extends React.Component
 			this._hark.stop();
 
 		this._stopVideoResolution();
+		this._stopFaceDetection();
 
-		if (faceDetection)
-			this._stopFaceDetection();
+		const { video } = this.refs;
 
-		const { audioElem, videoElem } = this.refs;
-
-		if (audioTrack)
+		if (audioTrack || videoTrack)
 		{
 			const stream = new MediaStream;
 
-			stream.addTrack(audioTrack);
-			audioElem.srcObject = stream;
+			if (audioTrack)
+				stream.addTrack(audioTrack);
 
-			audioElem.play()
-				.catch((error) => logger.warn('audioElem.play() failed:%o', error));
+			if (videoTrack)
+				stream.addTrack(videoTrack);
 
-			this._runHark(stream);
-		}
-		else
-		{
-			audioElem.srcObject = null;
-		}
+			video.srcObject = stream;
 
-		if (videoTrack)
-		{
-			const stream = new MediaStream;
+			if (audioTrack)
+				this._runHark(stream);
 
-			stream.addTrack(videoTrack);
-			videoElem.srcObject = stream;
-
-			videoElem.oncanplay = () => this.setState({ videoCanPlay: true });
-
-			videoElem.onplay = () =>
+			if (videoTrack)
 			{
-				this.setState({ videoElemPaused: false });
-
-				audioElem.play()
-					.catch((error) => logger.warn('audioElem.play() failed:%o', error));
-			};
-
-			videoElem.onpause = () => this.setState({ videoElemPaused: true });
-
-			videoElem.play()
-				.catch((error) => logger.warn('videoElem.play() failed:%o', error));
-
-			this._startVideoResolution();
-
-			if (faceDetection)
+				this._startVideoResolution();
 				this._startFaceDetection();
+			}
 		}
 		else
 		{
-			videoElem.srcObject = null;
+			video.srcObject = null;
 		}
 	}
 
@@ -584,17 +330,17 @@ export default class PeerView extends React.Component
 				videoResolutionWidth,
 				videoResolutionHeight
 			} = this.state;
-			const { videoElem } = this.refs;
+			const { video } = this.refs;
 
 			if (
-				videoElem.videoWidth !== videoResolutionWidth ||
-				videoElem.videoHeight !== videoResolutionHeight
+				video.videoWidth !== videoResolutionWidth ||
+				video.videoHeight !== videoResolutionHeight
 			)
 			{
 				this.setState(
 					{
-						videoResolutionWidth  : videoElem.videoWidth,
-						videoResolutionHeight : videoElem.videoHeight
+						videoResolutionWidth  : video.videoWidth,
+						videoResolutionHeight : video.videoHeight
 					});
 			}
 		}, 1000);
@@ -613,26 +359,29 @@ export default class PeerView extends React.Component
 
 	_startFaceDetection()
 	{
-		const { videoElem, canvas } = this.refs;
+		if (!window.DEMO_DO_FACE_DETECTION)
+			return;
+
+		const { video, canvas } = this.refs;
 
 		const step = () =>
 		{
 			// NOTE: Somehow this is critical. Otherwise the Promise returned by
 			// faceapi.detectSingleFace() never resolves or rejects.
-			if (!this._videoTrack || videoElem.readyState < 2)
+			if (!this._videoTrack || video.readyState < 2)
 			{
 				this._faceDetectionRequestAnimationFrame = requestAnimationFrame(step);
 
 				return;
 			}
 
-			faceapi.detectSingleFace(videoElem, tinyFaceDetectorOptions)
+			faceapi.detectSingleFace(video, tinyFaceDetectorOptions)
 				.then((detection) =>
 				{
 					if (detection)
 					{
-						const width = videoElem.offsetWidth;
-						const height = videoElem.offsetHeight;
+						const width = video.offsetWidth;
+						const height = video.offsetHeight;
 
 						canvas.width = width;
 						canvas.height = height;
@@ -666,60 +415,6 @@ export default class PeerView extends React.Component
 		canvas.width = 0;
 		canvas.height = 0;
 	}
-
-	_printProducerScore(id, score)
-	{
-		const scores = Array.isArray(score) ? score : [ score ];
-
-		return (
-			<React.Fragment key={id}>
-				<p>streams:</p>
-
-				{
-					scores
-						.sort((a, b) =>
-						{
-							if (a.rid)
-								return (a.rid > b.rid ? 1 : -1);
-							else
-								return (a.ssrc > b.ssrc ? 1 : -1);
-						})
-						.map(({ ssrc, rid, score }, idx) => ( // eslint-disable-line no-shadow
-							<p key={idx} className='indent'>
-								<Choose>
-									<When condition={rid !== undefined}>
-										{`rid:${rid}, ssrc:${ssrc}, score:${score}`}
-									</When>
-
-									<Otherwise>
-										{`ssrc:${ssrc}, score:${score}`}
-									</Otherwise>
-								</Choose>
-							</p>
-						))
-				}
-			</React.Fragment>
-		);
-	}
-
-	_printConsumerScore(id, score)
-	{
-		const scores = Array.isArray(score) ? score : [ score ];
-
-		return (
-			<React.Fragment key={id}>
-				<p>score:</p>
-
-				{
-					scores.map(({ producer, consumer }, idx) => (
-						<p key={idx} className='indent'>
-							{`producer:${producer}, consumer:${consumer}`}
-						</p>
-					))
-				}
-			</React.Fragment>
-		);
-	}
 }
 
 PeerView.propTypes =
@@ -727,27 +422,14 @@ PeerView.propTypes =
 	isMe : PropTypes.bool,
 	peer : PropTypes.oneOfType(
 		[ appPropTypes.Me, appPropTypes.Peer ]).isRequired,
-	audioProducerId                    : PropTypes.string,
-	videoProducerId                    : PropTypes.string,
-	audioConsumerId                    : PropTypes.string,
-	videoConsumerId                    : PropTypes.string,
-	audioRtpParameters                 : PropTypes.object,
-	videoRtpParameters                 : PropTypes.object,
-	audioTrack                         : PropTypes.any,
-	videoTrack                         : PropTypes.any,
-	audioMuted                         : PropTypes.bool,
-	videoVisible                       : PropTypes.bool.isRequired,
-	videoMultiLayer                    : PropTypes.bool,
-	videoCurrentSpatialLayer           : PropTypes.number,
-	videoPreferredSpatialLayer         : PropTypes.number,
-	audioCodec                         : PropTypes.string,
-	videoCodec                         : PropTypes.string,
-	audioScore                         : PropTypes.any,
-	videoScore                         : PropTypes.any,
-	faceDetection                      : PropTypes.bool.isRequired,
-	onChangeDisplayName                : PropTypes.func,
-	onChangeMaxSendingSpatialLayer     : PropTypes.func,
-	onChangeVideoPreferredSpatialLayer : PropTypes.func,
-	onRequestKeyFrame                  : PropTypes.func,
-	onStatsClick                       : PropTypes.func.isRequired
+	audioTrack                    : PropTypes.any,
+	videoTrack                    : PropTypes.any,
+	videoVisible                  : PropTypes.bool.isRequired,
+	videoProfile                  : PropTypes.string,
+	videoPreferredProfile         : PropTypes.string,
+	audioCodec                    : PropTypes.string,
+	videoCodec                    : PropTypes.string,
+	onChangeDisplayName           : PropTypes.func,
+	onChangeVideoPreferredProfile : PropTypes.func,
+	onRequestKeyFrame             : PropTypes.func
 };
