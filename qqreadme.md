@@ -2,17 +2,11 @@
 
 ### build
 
-(
-  cd server && 
-  ./docker/build.sh
-)
-
+./qqrelease_server.sh
+./qqrelease_app.sh
 
 ### run
 
-(
-  cd server && 
-  ./docker/run.sh
-)
-
+./qqrun_server.sh
+./qqrun_app.sh
 
