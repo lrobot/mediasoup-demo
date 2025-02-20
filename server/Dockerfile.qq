@@ -1,0 +1,52 @@
+###############################################################################################################
+FROM node:18 AS stage_builder
+RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm main contrib non-free non-free-firmware\n\
+deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm-updates main contrib non-free non-free-firmware\n\
+deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm-backports main contrib non-free non-free-firmware\n\
+deb https://mirrors.tuna.tsinghua.edu.cn/debian-security bookworm-security main contrib non-free non-free-firmware" | tee /etc/apt/sources.list
+RUN rm /etc/apt/sources.list.d/debian.sources
+RUN set -x && apt-get update 
+RUN set -x && apt-get install -y net-tools build-essential python3 python3-pip valgrind python3-socks curl
+RUN pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+RUN echo registry=https://registry.npmmirror.com > ~/.npmrc
+RUN npm install -g pnpm
+#########################################################
+
+RUN mkdir -p /mediasoup_demo
+WORKDIR /mediasoup_demo
+RUN curl -fSsL -o mediasoup-worker-3.15.3-linux-x64-kernel6.tgz https://github.com/versatica/mediasoup/releases/download/3.15.3/mediasoup-worker-3.15.3-linux-x64-kernel6.tgz
+RUN tar xzvf mediasoup-worker-3.15.3-linux-x64-kernel6.tgz 
+ENV MEDIASOUP_WORKER_BIN=/mediasoup_demo/mediasoup-worker
+COPY package.json .
+#this will be mediasoup as dep for demo
+RUN pnpm install
+
+COPY server.js .
+COPY config.qq.js config.js
+COPY lib lib
+COPY certs certs
+RUN tar cjvf /mediasoup_demo.tar.bz2 -C /mediasoup_demo .
+
+
+
+###############################################################################################################
+FROM node:18 AS stage_runner
+RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm main contrib non-free non-free-firmware\n\
+deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm-updates main contrib non-free non-free-firmware\n\
+deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm-backports main contrib non-free non-free-firmware\n\
+deb https://mirrors.tuna.tsinghua.edu.cn/debian-security bookworm-security main contrib non-free non-free-firmware" | tee /etc/apt/sources.list
+RUN rm /etc/apt/sources.list.d/debian.sources
+RUN set -x && apt-get update 
+RUN set -x && apt-get install -y net-tools build-essential python3 python3-pip valgrind python3-socks curl
+RUN pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
+RUN echo registry=https://registry.npmmirror.com > ~/.npmrc
+RUN npm install -g pnpm
+#########################################################
+
+RUN mkdir -p /mediasoup_demo
+WORKDIR /mediasoup_demo
+COPY --from=stage_builder /mediasoup_demo.tar.bz2 /mediasoup_demo.tar.bz2
+RUN tar xjvf /mediasoup_demo.tar.bz2 -C /mediasoup_demo
+ENV MEDIASOUP_WORKER_BIN=/mediasoup_demo/mediasoup-worker
+CMD ["node", "/mediasoup_demo/server.js"]
+
