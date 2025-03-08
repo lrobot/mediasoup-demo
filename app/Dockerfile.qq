@@ -9,10 +9,10 @@ RUN rm /etc/apt/sources.list.d/debian.sources
 RUN \
 	set -x \
 	&& apt-get clean \
-	&& apt-get update \
-	&& apt-get install -y net-tools curl
+	&& https_proxy= apt-get update \
+	&& https_proxy= apt-get install -y net-tools curl
 
-RUN echo registry=https://registry.npmmirror.com > ~/.npmrc
+RUN npm config set registry https://registry.npmmirror.com
 RUN npm install -g pnpm
 
 WORKDIR /app
@@ -22,9 +22,5 @@ COPY package.json .
 #RUN pnpm install --strict-peer-dependencies
 RUN pnpm install
 COPY . .
-COPY __config.qq.js /server/config.js
-#COPY certs /service/certs
-#ENV HTTPS_CERT_FULLCHAIN=/service/certs/_fullchain.pem
-#ENV HTTPS_CERT_PRIVKEY=/service/certs/_privkey.pem
 CMD ["npm", "start"]
 
