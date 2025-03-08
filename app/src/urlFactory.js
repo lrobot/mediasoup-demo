@@ -15,5 +15,5 @@ const protocol = 'wss';
 export function getProtooUrl(params) {
 	const query = qs.stringify(params);
 
-	return `${protocol}://${hostname}:${protooPort}/?${query}`;
+	return `${protocol}://${hostname}:${protooPort}/protoo?${query}`;
 }
