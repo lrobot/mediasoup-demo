@@ -23,14 +23,28 @@ const port = Number(process.env.VITE_LISTEN_PORT) || 3000
 const https = cert && key ? { cert, key } : undefined
 
 export default defineConfig({
+  optimizeDeps: {
+    // include: ['mediasoup-client'],
+  },
   plugins: [react()],
   build: {
+    commonjsOptions: { 
+      // include: ['mediasoup-client', '/node_modules/'],
+      transformMixedEsModules: true 
+    }, // Change,
     chunkSizeWarningLimit: Infinity,
   },
   server: {
     host,
     port,
     https,
+    proxy: {
+      '/protoo': {
+        target: 'ws://localhost:4443',
+        ws: true,
+        rewriteWsOrigin: true,
+      },
+    }
   },
 })
 
@@ -39,7 +53,7 @@ import openBrowser from 'react-dev-utils/openBrowser'
 import waitPort from 'wait-port'
 
 runDev()
-
+console.log(`vite config ok!`)
 async function runDev() {
   const dev = process.env.DEV
   if (!dev) {
