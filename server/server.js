@@ -41,6 +41,7 @@ let httpsServer;
 
 // Express application.
 // @type {Function}
+let expressRootApp;
 let expressApp;
 
 // Protoo WebSocket server.
@@ -160,7 +161,9 @@ async function createExpressApp()
 {
 	logger.info('creating Express app...');
 
-	expressApp = express();
+	expressRootApp = express();
+
+	expressApp = express.Router();
 
 	expressApp.use(bodyParser.json());
 
@@ -443,6 +446,8 @@ async function createExpressApp()
 				next();
 			}
 		});
+
+		expressRootApp.use('/protoo', expressApp);
 }
 
 /**
@@ -464,7 +469,7 @@ async function runHttpsServer()
 		logger.info('no tls provided in config, fallback to HTTP...');
 	}
 
-	httpsServer = tls ? https.createServer(tls, expressApp) : http.createServer(expressApp);
+	httpsServer = tls ? https.createServer(tls, expressRootApp) : http.createServer(expressRootApp);
 
 	await new Promise((resolve) =>
 	{
