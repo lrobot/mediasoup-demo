@@ -200,6 +200,43 @@ async function createExpressApp()
 			res.status(200).json(data);
 		});
 
+  expressApp.get(
+    '/rooms/:roomId/broadcasters', (req, res) =>
+    {
+      const data = {
+        peers: req.room._getJoinedPeers().map(peer => {
+          return {
+            id: peer.id,
+            displayName : peer.data.displayName,
+            device: peer.data.device,
+            producers: [...peer.data.producers.values()].map(p => { 
+              return {
+                id: p.id,
+                type: p.type,
+                kind: p.kind,
+              };
+            })
+          }
+        }),
+        broadcasters: [...req.room._broadcasters.values()].map(broadcaster => {
+          return {
+            id: broadcaster.id,
+            displayName: broadcaster.data.displayName,
+            device: broadcaster.data.device,
+            producers: [...broadcaster.data.producers.values()].map(p => { 
+              return {
+                id: p.id,
+                type: p.type,
+                kind: p.kind
+              };
+            })
+          };
+        })
+      }
+      res.status(200).json(data);
+    });
+
+
 	/**
 	 * POST API to create a Broadcaster.
 	 */
